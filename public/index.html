@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Backend Test Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f6f6f7;
+            min-height: 100vh;
+            padding: 0;
+            color: #202223;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e1e3e5;
+            padding: 24px 32px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #202223;
+            letter-spacing: -0.01em;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #6d7175;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .section {
+            margin-bottom: 32px;
+            padding: 0;
+            background: transparent;
+            border: none;
+        }
+
+        .section:not(:last-child) {
+            border-bottom: 1px solid #e1e3e5;
+            padding-bottom: 32px;
+        }
+
+        .section h2 {
+            color: #202223;
+            margin-bottom: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .status-indicator.online {
+            background: #008060;
+        }
+
+        .status-indicator.offline {
+            background: #bf0711;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #202223;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #c9cccf;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #ffffff;
+            color: #202223;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #202223;
+            box-shadow: 0 0 0 1px #202223;
+        }
+
+        input[type="file"] {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        small {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #6d7175;
+            line-height: 1.4;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: 1px solid #c9cccf;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #ffffff;
+            color: #202223;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #202223;
+            color: #ffffff;
+            border-color: #202223;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #3d4145;
+            border-color: #3d4145;
+        }
+
+        .btn-primary:active:not(:disabled) {
+            background: #000000;
+        }
+
+        .btn-secondary {
+            background: #ffffff;
+            color: #202223;
+            border-color: #c9cccf;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #f6f6f7;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-box {
+            margin-top: 16px;
+            padding: 16px;
+            background: #ffffff;
+            border-radius: 6px;
+            border: 1px solid #e1e3e5;
+            min-height: 60px;
+        }
+
+        .result-box.success {
+            border-color: #e1e3e5;
+            background: #ffffff;
+        }
+
+        .result-box.error {
+            border-color: #bf0711;
+            background: #ffffff;
+        }
+
+        .result-box.loading {
+            border-color: #e1e3e5;
+            background: #ffffff;
+        }
+
+        .result-box h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #202223;
+        }
+
+        .result-box.error h3 {
+            color: #bf0711;
+        }
+
+        .result-box.success h3 {
+            color: #008060;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e1e3e5;
+            border-top: 2px solid #202223;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-result {
+            margin-top: 16px;
+        }
+
+        .image-result h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #202223;
+        }
+
+        .image-result img {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #e1e3e5;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        #imagePreview {
+            margin-top: 12px;
+        }
+
+        #previewImg {
+            max-width: 200px;
+            border-radius: 6px;
+            border: 1px solid #e1e3e5;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        #imagePreview button {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #ffffff;
+            border-color: #bf0711;
+            color: #bf0711;
+        }
+
+        #imagePreview button:hover {
+            background: #fef2f2;
+        }
+
+        .info-box {
+            background: #f6f6f7;
+            border: 1px solid #e1e3e5;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 16px;
+        }
+
+        .info-box p {
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #202223;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-box code {
+            background: #ffffff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 12px;
+            border: 1px solid #e1e3e5;
+            color: #202223;
+        }
+
+        pre {
+            background: #f6f6f7;
+            color: #202223;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 12px;
+            font-size: 12px;
+            border: 1px solid #e1e3e5;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .health-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .health-status span {
+            font-size: 14px;
+            color: #202223;
+        }
+
+        .timestamp {
+            color: #6d7175;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+
+        .result-box p {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #202223;
+        }
+
+        .result-box ul {
+            margin: 8px 0 8px 20px;
+            font-size: 14px;
+            color: #202223;
+        }
+
+        .result-box li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Gemini Backend</h1>
+            <p>Test API endpoints and view results</p>
+        </div>
+
+        <div class="content">
+            <!-- Health Check Section -->
+            <div class="section">
+                <h2>Server Status</h2>
+                <div class="health-status">
+                    <span class="status-indicator offline" id="statusIndicator"></span>
+                    <span id="statusText">Not checked</span>
+                </div>
+                <button class="btn-secondary" onclick="checkHealth()">Check Health</button>
+                <div id="healthResult"></div>
+            </div>
+
+            <!-- Image Generation Section -->
+            <div class="section">
+                <h2>Image Generation</h2>
+                <form id="imageForm" onsubmit="generateImage(event)">
+                    <div class="form-group">
+                        <label for="prompt">Prompt:</label>
+                        <input 
+                            type="text" 
+                            id="prompt" 
+                            name="prompt" 
+                            placeholder="e.g., a futuristic fatbike on the beach"
+                            value="a futuristic fatbike on the beach"
+                            required
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="inputImage">Input Image (optional - for image-to-image)</label>
+                        <input 
+                            type="file" 
+                            id="inputImage" 
+                            name="inputImage" 
+                            accept="image/*"
+                            onchange="previewImage(event)"
+                        >
+                        <small>
+                            Leave empty for text-to-image, or upload an image for image-to-image transformation
+                        </small>
+                        <div id="imagePreview" style="margin-top: 10px; display: none;">
+                            <img id="previewImg" src="" alt="Preview" style="max-width: 200px; border-radius: 8px; border: 2px solid #667eea;">
+                            <button type="button" onclick="clearImage()" style="margin-left: 10px; padding: 5px 15px; background: #ffffff; color: #bf0711; border: 1px solid #bf0711; border-radius: 6px; cursor: pointer; font-size: 12px;">Remove</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="aspectRatio">Aspect Ratio:</label>
+                        <select id="aspectRatio" name="aspectRatio">
+                            <option value="1:1">1:1 (Vierkant)</option>
+                            <option value="16:9" selected>16:9 (Landscape)</option>
+                            <option value="9:16">9:16 (Portrait)</option>
+                            <option value="4:3">4:3 (Classic)</option>
+                            <option value="3:4">3:4 (Portrait Classic)</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn-primary" id="generateBtn">
+                            Generate Image
+                        </button>
+                    </div>
+                </form>
+                <div id="imageResult"></div>
+            </div>
+
+            <!-- API Info Section -->
+            <div class="section">
+                <h2>API Information</h2>
+                <div class="info-box">
+                    <p><strong>Health Endpoint:</strong> <code>GET /health</code></p>
+                    <p><strong>Image Generation:</strong> <code>POST /generate-image</code></p>
+                    <p><strong>Server URL:</strong> <code id="serverUrl">http://localhost:3000</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update server URL based on current location
+        document.getElementById('serverUrl').textContent = window.location.origin;
+
+        // Check health status
+        async function checkHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+
+            resultDiv.innerHTML = '<div class="result-box loading"><span class="loading-spinner"></span>Checking server status...</div>';
+            statusText.textContent = 'Checking...';
+
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusIndicator.className = 'status-indicator online';
+                    statusText.textContent = 'Online';
+                    resultDiv.innerHTML = `
+                        <div class="result-box success">
+                            <h3>Server is Online</h3>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                            <div class="timestamp">Checked at: ${new Date().toLocaleString()}</div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Server returned an error');
+                }
+            } catch (error) {
+                statusIndicator.className = 'status-indicator offline';
+                statusText.textContent = 'Offline';
+                resultDiv.innerHTML = `
+                    <div class="result-box error">
+                        <h3>Server is Offline</h3>
+                        <p>Error: ${error.message}</p>
+                        <p>Make sure the server is running on <code>http://localhost:3000</code></p>
+                    </div>
+                `;
+            }
+        }
+
+        // Preview uploaded image
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewDiv = document.getElementById('imagePreview');
+                    const previewImg = document.getElementById('previewImg');
+                    previewImg.src = e.target.result;
+                    previewDiv.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Clear image preview
+        function clearImage() {
+            document.getElementById('inputImage').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('previewImg').src = '';
+        }
+
+        // Convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Generate image
+        async function generateImage(event) {
+            event.preventDefault();
+            
+            const resultDiv = document.getElementById('imageResult');
+            const generateBtn = document.getElementById('generateBtn');
+            const prompt = document.getElementById('prompt').value;
+            const aspectRatio = document.getElementById('aspectRatio').value;
+            const inputImageFile = document.getElementById('inputImage').files[0];
+
+            // Disable button and show loading
+            generateBtn.disabled = true;
+            const generationType = inputImageFile ? 'Transforming...' : 'Generating...';
+            generateBtn.innerHTML = `<span class="loading-spinner"></span>${generationType}`;
+            resultDiv.innerHTML = `<div class="result-box loading"><span class="loading-spinner"></span>${inputImageFile ? 'Transforming' : 'Generating'} image, this may take a moment...</div>`;
+
+            try {
+                // Convert image to base64 if provided
+                let imageBase64 = null;
+                if (inputImageFile) {
+                    imageBase64 = await fileToBase64(inputImageFile);
+                }
+
+                const requestBody = {
+                    prompt: prompt,
+                    aspectRatio: aspectRatio
+                };
+
+                // Add image if provided (for image-to-image)
+                if (imageBase64) {
+                    requestBody.image = imageBase64;
+                }
+
+                const response = await fetch('/generate-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+
+                if (response.ok && data.success) {
+                    let imagesHtml = '';
+                    if (data.images && data.images.length > 0) {
+                        data.images.forEach((imageData, index) => {
+                            imagesHtml += `
+                                <div class="image-result">
+                                    <h3>Generated Image ${index + 1}:</h3>
+                                    <img src="${imageData}" alt="Generated image ${index + 1}">
+                                </div>
+                            `;
+                        });
+                    }
+
+                    const typeLabel = data.type === 'image-to-image' ? 'Image Transformed' : 'Image Generated';
+                    resultDiv.innerHTML = `
+                        <div class="result-box success">
+                            <h3>${typeLabel} Successfully</h3>
+                            <p><strong>Type:</strong> ${data.type === 'image-to-image' ? 'Image-to-Image' : 'Text-to-Image'}</p>
+                            <p><strong>Prompt:</strong> ${data.prompt}</p>
+                            <p><strong>Aspect Ratio:</strong> ${data.aspectRatio}</p>
+                            <p><strong>Number of Images:</strong> ${data.images ? data.images.length : 0}</p>
+                            ${imagesHtml}
+                            <div class="timestamp">Generated at: ${new Date().toLocaleString()}</div>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result-box error">
+                        <h3>Error Generating Image</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check if:</p>
+                        <ul>
+                            <li>The server is running</li>
+                            <li>The service account credentials are correct</li>
+                            <li>PROJECT_ID is set in .env</li>
+                            <li>The Gemini API is enabled in Google Cloud</li>
+                        </ul>
+                        <pre>${JSON.stringify({ error: error.message }, null, 2)}</pre>
+                    </div>
+                `;
+            } finally {
+                // Re-enable button
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate Image';
+            }
+        }
+
+        // Auto-check health on page load
+        window.addEventListener('load', () => {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>
+

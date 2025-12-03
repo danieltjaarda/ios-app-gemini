@@ -1,0 +1,29 @@
+{
+  "name": "gemini-backend",
+  "version": "1.0.0",
+  "description": "Secure Node.js backend for React Native iOS app with Google Gemini API integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "keywords": [
+    "express",
+    "gemini",
+    "api",
+    "react-native"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "google-auth-library": "^9.0.0",
+    "node-fetch": "^2.7.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
