@@ -595,18 +595,24 @@
                     throw new Error(data.error || 'Unknown error occurred');
                 }
             } catch (error) {
+                let errorDetails = error.message;
+                if (error.message === 'Failed to fetch') {
+                    errorDetails = 'Cannot connect to server. The server may be starting up or there may be a network issue. Please check the Render dashboard for deployment status.';
+                }
+                
                 resultDiv.innerHTML = `
                     <div class="result-box error">
                         <h3>Error Generating Image</h3>
-                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Error:</strong> ${errorDetails}</p>
                         <p>Check if:</p>
                         <ul>
-                            <li>The server is running</li>
+                            <li>The server is running on Render (check deployment status)</li>
                             <li>The service account credentials are correct</li>
-                            <li>PROJECT_ID is set in .env</li>
+                            <li>PROJECT_ID is set in environment variables</li>
                             <li>The Gemini API is enabled in Google Cloud</li>
+                            <li>The server URL is correct: <code>${window.location.origin}</code></li>
                         </ul>
-                        <pre>${JSON.stringify({ error: error.message }, null, 2)}</pre>
+                        <pre>${JSON.stringify({ error: error.message, url: window.location.origin }, null, 2)}</pre>
                     </div>
                 `;
             } finally {

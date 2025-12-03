@@ -12,7 +12,12 @@ const PROJECT_ID = process.env.PROJECT_ID;
 const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || './keys/vertex.json';
 
 // Middleware
-app.use(cors());
+// CORS configuration - allow all origins for now (adjust for production)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
+}));
 // Increase body size limit to 50MB for image uploads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
