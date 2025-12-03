@@ -55,13 +55,22 @@ let authClient = null;
 
 async function initializeAuth() {
   try {
-    // Check if credentials file exists
-    const credentialsPath = path.resolve(CREDENTIALS_PATH);
+    // Check if credentials file exists at the specified path
+    let credentialsPath = path.resolve(CREDENTIALS_PATH);
+    
+    // If file doesn't exist at specified path, try root directory (for Render secret files)
     if (!fs.existsSync(credentialsPath)) {
-      console.warn(`⚠️  Credentials file not found at: ${credentialsPath}`);
-      console.warn('⚠️  Server will start but image generation will not work until credentials are added.');
-      console.warn('⚠️  Please add your Google Cloud service account JSON file to: keys/vertex.json');
-      return; // Don't throw, allow server to start
+      const rootPath = path.resolve('./vertex.json');
+      if (fs.existsSync(rootPath)) {
+        credentialsPath = rootPath;
+        console.log(`✅ Using credentials from root: ${credentialsPath}`);
+      } else {
+        console.warn(`⚠️  Credentials file not found at: ${CREDENTIALS_PATH}`);
+        console.warn('⚠️  Also checked: ./vertex.json');
+        console.warn('⚠️  Server will start but image generation will not work until credentials are added.');
+        console.warn('⚠️  Please add your Google Cloud service account JSON file.');
+        return; // Don't throw, allow server to start
+      }
     }
 
     // Initialize Google Auth with service account
