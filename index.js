@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { GoogleAuth } = require('google-auth-library');
+const { OpenAI } = require('openai');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PROJECT_ID = process.env.PROJECT_ID;
 const CREDENTIALS_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || './keys/vertex.json';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+// Initialize OpenAI client for Sora
+let openaiClient = null;
+if (OPENAI_API_KEY) {
+  openaiClient = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+  });
+  console.log('✅ OpenAI client initialized for Sora');
+} else {
+  console.warn('⚠️  OPENAI_API_KEY not set. Sora video generation will not work.');
+}
 
 // Middleware
 // CORS configuration - allow all origins for now (adjust for production)
@@ -234,6 +247,150 @@ function logImageGeneration(userId, prompt, timestamp) {
   // Future: await db.logs.insert({ userId, prompt, timestamp });
 }
 
+// ==================== SORA VIDEO GENERATION ====================
+
+// Create video using Sora API
+async function createVideo(prompt, model = 'sora-2', size = '1280x720', seconds = 8, inputImageBase64 = null) {
+  try {
+    if (!openaiClient) {
+      throw new Error('OpenAI client not initialized. Please set OPENAI_API_KEY environment variable.');
+    }
+
+    // Use FormData for multipart upload when image is provided
+    if (inputImageBase64) {
+      // Extract base64 data and mime type from data URL if present
+      let imageData = inputImageBase64;
+      let mimeType = 'image/png';
+      
+      if (inputImageBase64.startsWith('data:')) {
+        const matches = inputImageBase64.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          mimeType = matches[1];
+          imageData = matches[2];
+        } else {
+          imageData = inputImageBase64.replace(/^data:[^;]+;base64,/, '');
+        }
+      }
+
+      // Convert base64 to buffer
+      const imageBuffer = Buffer.from(imageData, 'base64');
+      
+      // Create a File-like object for OpenAI SDK
+      // The SDK expects a File or Blob object, but in Node.js we use a workaround
+      const FormData = require('form-data');
+      const formData = new FormData();
+      
+      formData.append('model', model);
+      formData.append('prompt', prompt);
+      formData.append('size', size);
+      formData.append('seconds', seconds.toString());
+      formData.append('input_reference', imageBuffer, {
+        filename: 'input_reference.jpg',
+        contentType: mimeType,
+      });
+
+      // Use the raw API call with FormData
+      const response = await fetch('https://api.openai.com/v1/videos', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          ...formData.getHeaders(),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Failed to create video');
+      }
+
+      const video = await response.json();
+      
+      return {
+        id: video.id,
+        status: video.status,
+        model: video.model,
+        progress: video.progress || 0,
+        seconds: video.seconds,
+        size: video.size,
+        created_at: video.created_at,
+      };
+    } else {
+      // No image, use SDK directly
+      const video = await openaiClient.videos.create({
+        model: model,
+        prompt: prompt,
+        size: size,
+        seconds: seconds,
+      });
+      
+      return {
+        id: video.id,
+        status: video.status,
+        model: video.model,
+        progress: video.progress || 0,
+        seconds: video.seconds,
+        size: video.size,
+        created_at: video.created_at,
+      };
+    }
+  } catch (error) {
+    console.error('Error creating video:', error.message);
+    throw error;
+  }
+}
+
+// Get video status
+async function getVideoStatus(videoId) {
+  try {
+    if (!openaiClient) {
+      throw new Error('OpenAI client not initialized. Please set OPENAI_API_KEY environment variable.');
+    }
+
+    const video = await openaiClient.videos.retrieve(videoId);
+    
+    return {
+      id: video.id,
+      status: video.status,
+      model: video.model,
+      progress: video.progress || 0,
+      seconds: video.seconds,
+      size: video.size,
+      created_at: video.created_at,
+      error: video.error || null,
+    };
+  } catch (error) {
+    console.error('Error getting video status:', error.message);
+    throw error;
+  }
+}
+
+// Download video content
+async function downloadVideoContent(videoId, variant = 'video') {
+  try {
+    if (!openaiClient) {
+      throw new Error('OpenAI client not initialized. Please set OPENAI_API_KEY environment variable.');
+    }
+
+    const content = await openaiClient.videos.downloadContent(videoId, { variant: variant });
+    const arrayBuffer = await content.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    return {
+      buffer: buffer,
+      contentType: variant === 'video' ? 'video/mp4' : variant === 'thumbnail' ? 'image/webp' : 'image/jpeg',
+    };
+  } catch (error) {
+    console.error('Error downloading video content:', error.message);
+    throw error;
+  }
+}
+
+// Logging function for video generation
+function logVideoGeneration(userId, prompt, videoId, timestamp) {
+  console.log(`[LOG] Video Generation - User: ${userId || 'anonymous'}, Prompt: ${prompt}, Video ID: ${videoId}, Time: ${new Date(timestamp).toISOString()}`);
+}
+
 // POST /generate-image endpoint
 // Supports both text-to-image and image-to-image generation
 app.post('/generate-image', rateLimitMiddleware, async (req, res) => {
@@ -308,6 +465,197 @@ app.post('/generate-image', rateLimitMiddleware, async (req, res) => {
   }
 });
 
+// ==================== SORA VIDEO ENDPOINTS ====================
+
+// POST /generate-video endpoint
+// Start a video generation job
+app.post('/generate-video', rateLimitMiddleware, async (req, res) => {
+  try {
+    const { prompt, model, size, seconds, image } = req.body;
+
+    // Validate input
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Missing or invalid prompt. Please provide a valid prompt string.',
+      });
+    }
+
+    // Validate model
+    const validModels = ['sora-2', 'sora-2-pro'];
+    const videoModel = model || 'sora-2';
+    if (!validModels.includes(videoModel)) {
+      return res.status(400).json({
+        error: `Invalid model. Must be one of: ${validModels.join(', ')}`,
+      });
+    }
+
+    // Validate size
+    const validSizes = ['1280x720', '1920x1080', '1080x1920', '720x1280'];
+    const videoSize = size || '1280x720';
+    if (!validSizes.includes(videoSize)) {
+      return res.status(400).json({
+        error: `Invalid size. Must be one of: ${validSizes.join(', ')}`,
+      });
+    }
+
+    // Validate seconds (between 1 and 60)
+    const videoSeconds = seconds ? parseInt(seconds) : 8;
+    if (isNaN(videoSeconds) || videoSeconds < 1 || videoSeconds > 60) {
+      return res.status(400).json({
+        error: 'Invalid seconds. Must be a number between 1 and 60.',
+      });
+    }
+
+    // Validate image if provided (for image-to-video)
+    let inputImageBase64 = null;
+    if (image) {
+      if (typeof image !== 'string') {
+        return res.status(400).json({
+          error: 'Invalid image format. Image must be a base64 string (data URL or base64).',
+        });
+      }
+      inputImageBase64 = image;
+    }
+
+    // Log the request
+    const userId = req.headers['x-user-id'] || 'anonymous';
+    const timestamp = Date.now();
+    const generationType = inputImageBase64 ? 'image-to-video' : 'text-to-video';
+    logVideoGeneration(userId, `${generationType}: ${prompt}`, 'pending', timestamp);
+
+    // Create video
+    const video = await createVideo(prompt.trim(), videoModel, videoSize, videoSeconds, inputImageBase64);
+
+    // Return response
+    res.json({
+      success: true,
+      video: video,
+      prompt: prompt,
+      model: videoModel,
+      size: videoSize,
+      seconds: videoSeconds,
+      type: generationType,
+    });
+  } catch (error) {
+    console.error('Error in /generate-video:', error.message);
+    
+    // Return appropriate error response
+    if (error.message.includes('not initialized')) {
+      return res.status(500).json({
+        error: 'Server configuration error. OpenAI API key not configured.',
+      });
+    }
+    
+    if (error.response) {
+      return res.status(error.response.status || 502).json({
+        error: error.response.data?.error?.message || 'Failed to create video. Please try again later.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+// GET /video-status/:videoId endpoint
+// Get the status of a video generation job
+app.get('/video-status/:videoId', rateLimitMiddleware, async (req, res) => {
+  try {
+    const { videoId } = req.params;
+
+    if (!videoId || typeof videoId !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid video ID. Please provide a valid video ID.',
+      });
+    }
+
+    const videoStatus = await getVideoStatus(videoId);
+
+    res.json({
+      success: true,
+      video: videoStatus,
+    });
+  } catch (error) {
+    console.error('Error in /video-status:', error.message);
+    
+    if (error.message.includes('not initialized')) {
+      return res.status(500).json({
+        error: 'Server configuration error. OpenAI API key not configured.',
+      });
+    }
+
+    if (error.response) {
+      return res.status(error.response.status || 404).json({
+        error: error.response.data?.error?.message || 'Video not found or failed to retrieve status.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+// GET /video-content/:videoId endpoint
+// Download the video content (MP4, thumbnail, or spritesheet)
+app.get('/video-content/:videoId', rateLimitMiddleware, async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const variant = req.query.variant || 'video'; // video, thumbnail, or spritesheet
+
+    if (!videoId || typeof videoId !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid video ID. Please provide a valid video ID.',
+      });
+    }
+
+    // First check if video is completed
+    const videoStatus = await getVideoStatus(videoId);
+    
+    if (videoStatus.status !== 'completed') {
+      return res.status(400).json({
+        error: `Video is not ready yet. Current status: ${videoStatus.status}`,
+        video: videoStatus,
+      });
+    }
+
+    // Download the content
+    const content = await downloadVideoContent(videoId, variant);
+
+    // Set appropriate headers
+    res.setHeader('Content-Type', content.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${variant}-${videoId}.${variant === 'video' ? 'mp4' : variant === 'thumbnail' ? 'webp' : 'jpg'}"`);
+    
+    // Send the buffer
+    res.send(content.buffer);
+  } catch (error) {
+    console.error('Error in /video-content:', error.message);
+    
+    if (error.message.includes('not initialized')) {
+      return res.status(500).json({
+        error: 'Server configuration error. OpenAI API key not configured.',
+      });
+    }
+
+    if (error.response) {
+      return res.status(error.response.status || 404).json({
+        error: error.response.data?.error?.message || 'Video content not found or failed to download.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error. Please try again later.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
 // Error handler for payload too large
 app.use((error, req, res, next) => {
   if (error.type === 'entity.too.large') {
@@ -324,7 +672,11 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'gemini-backend'
+    service: 'gemini-backend',
+    features: {
+      imageGeneration: !!authClient,
+      videoGeneration: !!openaiClient,
+    }
   });
 });
 
