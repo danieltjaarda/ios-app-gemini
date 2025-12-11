@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Backend Test Page</title>
+    <title>Gemini & Sora Backend Test Page</title>
     <style>
         * {
             margin: 0;
@@ -356,13 +356,89 @@
         .result-box li {
             margin-bottom: 4px;
         }
+
+        /* Video specific styles */
+        .video-result {
+            margin-top: 16px;
+        }
+
+        .video-result h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #202223;
+        }
+
+        .video-result video {
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #e1e3e5;
+            margin-bottom: 12px;
+            display: block;
+            background: #000;
+        }
+
+        .progress-container {
+            margin-top: 12px;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar-wrapper {
+            height: 8px;
+            background: #e1e3e5;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #202223;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: #6d7175;
+            text-align: center;
+        }
+
+        .video-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .video-status.queued {
+            background: #f6f6f7;
+            color: #6d7175;
+        }
+
+        .video-status.in_progress {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .video-status.completed {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .video-status.failed {
+            background: #ffebee;
+            color: #c62828;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Gemini Backend</h1>
-            <p>Test API endpoints and view results</p>
+            <h1>Gemini & Sora Backend</h1>
+            <p>Test API endpoints for image and video generation</p>
         </div>
 
         <div class="content">
@@ -377,9 +453,86 @@
                 <div id="healthResult"></div>
             </div>
 
+            <!-- Video Generation Section -->
+            <div class="section">
+                <h2>Video Generation (Sora 2)</h2>
+                <form id="videoForm" onsubmit="generateVideo(event)">
+                    <div class="form-group">
+                        <label for="videoPrompt">Prompt:</label>
+                        <input 
+                            type="text" 
+                            id="videoPrompt" 
+                            name="videoPrompt" 
+                            placeholder="e.g., Wide tracking shot of a teal coupe driving through a desert highway"
+                            value="Wide tracking shot of a teal coupe driving through a desert highway, heat ripples visible, hard sun overhead."
+                            required
+                        >
+                        <small>
+                            Describe the shot type, subject, action, setting, and lighting for best results
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoInputImage">Input Image (optional - for image-to-video)</label>
+                        <input 
+                            type="file" 
+                            id="videoInputImage" 
+                            name="videoInputImage" 
+                            accept="image/*"
+                            onchange="previewVideoImage(event)"
+                        >
+                        <small>
+                            Leave empty for text-to-video, or upload an image for image-to-video transformation
+                        </small>
+                        <div id="videoImagePreview" style="margin-top: 10px; display: none;">
+                            <img id="previewVideoImg" src="" alt="Preview" style="max-width: 200px; border-radius: 8px; border: 2px solid #667eea;">
+                            <button type="button" onclick="clearVideoImage()" style="margin-left: 10px; padding: 5px 15px; background: #ffffff; color: #bf0711; border: 1px solid #bf0711; border-radius: 6px; cursor: pointer; font-size: 12px;">Remove</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoModel">Model:</label>
+                        <select id="videoModel" name="videoModel">
+                            <option value="sora-2" selected>sora-2 (Fast)</option>
+                            <option value="sora-2-pro">sora-2-pro (High Quality)</option>
+                        </select>
+                        <small>sora-2 is faster, sora-2-pro produces higher quality results</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoSize">Size:</label>
+                        <select id="videoSize" name="videoSize">
+                            <option value="1280x720" selected>1280x720 (HD)</option>
+                            <option value="1920x1080">1920x1080 (Full HD)</option>
+                            <option value="1080x1920">1080x1920 (Portrait Full HD)</option>
+                            <option value="720x1280">720x1280 (Portrait HD)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="videoSeconds">Duration (seconds):</label>
+                        <input 
+                            type="number" 
+                            id="videoSeconds" 
+                            name="videoSeconds" 
+                            min="1" 
+                            max="60" 
+                            value="8"
+                            required
+                        >
+                        <small>Video length in seconds (1-60)</small>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn-primary" id="generateVideoBtn">
+                            Generate Video
+                        </button>
+                        <button type="button" class="btn-secondary" id="checkVideoStatusBtn" onclick="checkVideoStatus()" style="display: none;">
+                            Check Status
+                        </button>
+                    </div>
+                </form>
+                <div id="videoResult"></div>
+            </div>
+
             <!-- Image Generation Section -->
             <div class="section">
-                <h2>Image Generation</h2>
+                <h2>Image Generation (Gemini)</h2>
                 <form id="imageForm" onsubmit="generateImage(event)">
                     <div class="form-group">
                         <label for="prompt">Prompt:</label>
@@ -434,6 +587,9 @@
                 <div class="info-box">
                     <p><strong>Health Endpoint:</strong> <code>GET /health</code></p>
                     <p><strong>Image Generation:</strong> <code>POST /generate-image</code></p>
+                    <p><strong>Video Generation:</strong> <code>POST /generate-video</code></p>
+                    <p><strong>Video Status:</strong> <code>GET /video-status/:videoId</code></p>
+                    <p><strong>Video Download:</strong> <code>GET /video-content/:videoId</code></p>
                     <p><strong>Server URL:</strong> <code id="serverUrl">http://localhost:3000</code></p>
                 </div>
             </div>
@@ -619,6 +775,266 @@
                 // Re-enable button
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = 'Generate Image';
+            }
+        }
+
+        // ==================== VIDEO GENERATION FUNCTIONS ====================
+
+        let currentVideoId = null;
+        let videoStatusInterval = null;
+
+        // Preview uploaded image for video
+        function previewVideoImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewDiv = document.getElementById('videoImagePreview');
+                    const previewImg = document.getElementById('previewVideoImg');
+                    previewImg.src = e.target.result;
+                    previewDiv.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Clear video image preview
+        function clearVideoImage() {
+            document.getElementById('videoInputImage').value = '';
+            document.getElementById('videoImagePreview').style.display = 'none';
+            document.getElementById('previewVideoImg').src = '';
+        }
+
+        // Generate video
+        async function generateVideo(event) {
+            event.preventDefault();
+            
+            const resultDiv = document.getElementById('videoResult');
+            const generateBtn = document.getElementById('generateVideoBtn');
+            const checkStatusBtn = document.getElementById('checkVideoStatusBtn');
+            const prompt = document.getElementById('videoPrompt').value;
+            const model = document.getElementById('videoModel').value;
+            const size = document.getElementById('videoSize').value;
+            const seconds = parseInt(document.getElementById('videoSeconds').value);
+            const inputImageFile = document.getElementById('videoInputImage').files[0];
+
+            // Disable button and show loading
+            generateBtn.disabled = true;
+            const generationType = inputImageFile ? 'Transforming...' : 'Generating...';
+            generateBtn.innerHTML = `<span class="loading-spinner"></span>${generationType}`;
+            resultDiv.innerHTML = `<div class="result-box loading"><span class="loading-spinner"></span>Starting video generation, this may take several minutes...</div>`;
+
+            try {
+                // Convert image to base64 if provided
+                let imageBase64 = null;
+                if (inputImageFile) {
+                    imageBase64 = await fileToBase64(inputImageFile);
+                }
+
+                const requestBody = {
+                    prompt: prompt,
+                    model: model,
+                    size: size,
+                    seconds: seconds
+                };
+
+                // Add image if provided (for image-to-video)
+                if (imageBase64) {
+                    requestBody.image = imageBase64;
+                }
+
+                const response = await fetch('/generate-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentVideoId = data.video.id;
+                    checkStatusBtn.style.display = 'inline-block';
+                    
+                    resultDiv.innerHTML = `
+                        <div class="result-box success">
+                            <h3>Video Generation Started</h3>
+                            <p><strong>Video ID:</strong> ${data.video.id}</p>
+                            <p><strong>Status:</strong> <span class="video-status ${data.video.status}">${data.video.status}</span></p>
+                            <p><strong>Model:</strong> ${data.video.model}</p>
+                            <p><strong>Size:</strong> ${data.video.size}</p>
+                            <p><strong>Duration:</strong> ${data.video.seconds} seconds</p>
+                            <p><strong>Type:</strong> ${data.type === 'image-to-video' ? 'Image-to-Video' : 'Text-to-Video'}</p>
+                            <div class="progress-container">
+                                <div class="progress-bar-wrapper">
+                                    <div class="progress-bar" style="width: ${data.video.progress || 0}%"></div>
+                                </div>
+                                <div class="progress-text">Progress: ${data.video.progress || 0}%</div>
+                            </div>
+                            <p style="margin-top: 12px; font-size: 12px; color: #6d7175;">
+                                Video generation is in progress. This may take 2-5 minutes. 
+                                Status will be checked automatically...
+                            </p>
+                        </div>
+                    `;
+
+                    // Start polling for status
+                    startVideoStatusPolling(currentVideoId);
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                let errorDetails = error.message;
+                if (error.message === 'Failed to fetch') {
+                    errorDetails = 'Cannot connect to server. The server may be starting up or there may be a network issue.';
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="result-box error">
+                        <h3>Error Generating Video</h3>
+                        <p><strong>Error:</strong> ${errorDetails}</p>
+                        <p>Check if:</p>
+                        <ul>
+                            <li>The server is running</li>
+                            <li>OPENAI_API_KEY is set in environment variables</li>
+                            <li>You have access to Sora API</li>
+                            <li>The server URL is correct: <code>${window.location.origin}</code></li>
+                        </ul>
+                    </div>
+                `;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = 'Generate Video';
+            }
+        }
+
+        // Start polling video status
+        function startVideoStatusPolling(videoId) {
+            // Clear any existing interval
+            if (videoStatusInterval) {
+                clearInterval(videoStatusInterval);
+            }
+
+            // Poll every 5 seconds
+            videoStatusInterval = setInterval(async () => {
+                await checkVideoStatus(videoId, true);
+            }, 5000);
+
+            // Also check immediately
+            checkVideoStatus(videoId, true);
+        }
+
+        // Check video status
+        async function checkVideoStatus(videoId = null, autoPoll = false) {
+            const videoIdToCheck = videoId || currentVideoId;
+            if (!videoIdToCheck) {
+                alert('No video ID available. Please generate a video first.');
+                return;
+            }
+
+            const resultDiv = document.getElementById('videoResult');
+            
+            try {
+                const response = await fetch(`/video-status/${videoIdToCheck}`);
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const video = data.video;
+                    const progress = video.progress || 0;
+
+                    // Update progress display
+                    let statusHtml = `
+                        <div class="result-box ${video.status === 'completed' ? 'success' : video.status === 'failed' ? 'error' : 'loading'}">
+                            <h3>Video Generation Status</h3>
+                            <p><strong>Video ID:</strong> ${video.id}</p>
+                            <p><strong>Status:</strong> <span class="video-status ${video.status}">${video.status}</span></p>
+                            <p><strong>Model:</strong> ${video.model}</p>
+                            <p><strong>Size:</strong> ${video.size}</p>
+                            <p><strong>Duration:</strong> ${video.seconds} seconds</p>
+                            <div class="progress-container">
+                                <div class="progress-bar-wrapper">
+                                    <div class="progress-bar" style="width: ${progress}%"></div>
+                                </div>
+                                <div class="progress-text">Progress: ${progress}%</div>
+                            </div>
+                    `;
+
+                    if (video.status === 'completed') {
+                        // Stop polling
+                        if (videoStatusInterval) {
+                            clearInterval(videoStatusInterval);
+                            videoStatusInterval = null;
+                        }
+
+                        // Download and display video
+                        statusHtml += `
+                            <p style="margin-top: 12px; color: #008060; font-weight: 500;">✅ Video generation completed!</p>
+                            <p style="margin-top: 8px; font-size: 12px; color: #6d7175;">Downloading video...</p>
+                        </div>`;
+                        
+                        resultDiv.innerHTML = statusHtml;
+
+                        // Download video
+                        try {
+                            const videoUrl = `/video-content/${videoIdToCheck}?variant=video`;
+                            statusHtml += `
+                                <div class="video-result" style="margin-top: 16px;">
+                                    <h3>Generated Video:</h3>
+                                    <video controls style="width: 100%; max-width: 800px;">
+                                        <source src="${videoUrl}" type="video/mp4">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                    <p style="margin-top: 8px;">
+                                        <a href="${videoUrl}" download="video-${videoIdToCheck}.mp4" class="btn-secondary" style="text-decoration: none; display: inline-block;">
+                                            Download Video
+                                        </a>
+                                    </p>
+                                    <div class="timestamp">Completed at: ${new Date().toLocaleString()}</div>
+                                </div>
+                            `;
+                            resultDiv.innerHTML = statusHtml;
+                        } catch (downloadError) {
+                            statusHtml += `
+                                <p style="color: #bf0711; margin-top: 12px;">Error downloading video: ${downloadError.message}</p>
+                                <p>You can try downloading manually: <a href="/video-content/${videoIdToCheck}" target="_blank">Download Video</a></p>
+                            `;
+                            resultDiv.innerHTML = statusHtml;
+                        }
+                    } else if (video.status === 'failed') {
+                        // Stop polling
+                        if (videoStatusInterval) {
+                            clearInterval(videoStatusInterval);
+                            videoStatusInterval = null;
+                        }
+
+                        statusHtml += `
+                            <p style="margin-top: 12px; color: #bf0711; font-weight: 500;">❌ Video generation failed</p>
+                            ${video.error ? `<p style="margin-top: 8px; color: #bf0711;">Error: ${video.error.message || JSON.stringify(video.error)}</p>` : ''}
+                        </div>`;
+                        resultDiv.innerHTML = statusHtml;
+                    } else {
+                        // Still processing
+                        if (!autoPoll) {
+                            statusHtml += `<p style="margin-top: 12px; font-size: 12px; color: #6d7175;">Status will be checked automatically...</p>`;
+                        }
+                        statusHtml += `</div>`;
+                        resultDiv.innerHTML = statusHtml;
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to get video status');
+                }
+            } catch (error) {
+                if (!autoPoll) {
+                    // Only show error if manually checking
+                    resultDiv.innerHTML = `
+                        <div class="result-box error">
+                            <h3>Error Checking Video Status</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                        </div>
+                    `;
+                }
+                console.error('Error checking video status:', error);
             }
         }
 
